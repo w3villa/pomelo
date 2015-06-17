@@ -410,6 +410,48 @@ function list(opts) {
   });
 }
 
+function getStatus(opts, cb) {
+  var id = 'pomelo_list_' + Date.now();
+  connectToMaster(id, opts, function(client) {
+    client.request(co.moduleId, {signal: 'list'}, function(err, data) {
+      if(err) {
+        console.error(err);
+      }
+      var servers = [];
+      for(var key in data.msg) {
+        servers.push(data.msg[key]);
+      }
+      var comparer = function(a, b) {
+        if (a.serverType < b.serverType) {
+          return -1;
+        } else if (a.serverType > b.serverType) {
+          return 1;
+        } else if (a.serverId < b.serverId) {
+          return -1;
+        } else if (a.serverId > b.serverId) {
+          return 1;
+        } else {
+          return 0;
+        }
+      };
+      servers.sort(comparer);
+      var rows = [];
+      servers.forEach(function(server) {
+        rows.push({
+          serverId: server.serverId, 
+          serverType: server.serverType, 
+          pid: server.pid, 
+          rss: server.rss, 
+          heapTotal: server.heapTotal, 
+          heapUsed: server.heapUsed, 
+          uptime: server.uptime});
+      });
+      cb(rows)
+    });
+  });
+}
+
+
 /**
  * Add server to application.
  *
@@ -679,3 +721,7 @@ function runServer(server) {
     starter.sshrun(cmd, server.host);
   }
 }
+
+module.exports = {
+  getStatus: getStatus
+};
